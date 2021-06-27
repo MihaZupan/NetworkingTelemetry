@@ -3,7 +3,7 @@
 
 namespace NetworkingTelemetry
 {
-    public interface INetworkingMetricsConsumer<TMetrics>
+    public interface IMetricsConsumer<TMetrics>
     {
         void OnMetrics(TMetrics previous, TMetrics current);
     }

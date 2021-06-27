@@ -26,7 +26,7 @@ namespace NetworkingTelemetry
         protected abstract bool TrySaveMetric(TMetrics metrics, string name, double value);
 
         private TTelemetryConsumer[]? _telemetryConsumers;
-        private INetworkingMetricsConsumer<TMetrics>[]? _metricsConsumers;
+        private IMetricsConsumer<TMetrics>[]? _metricsConsumers;
 
         private int _metricsCount;
         private TMetrics? _previousMetrics;
@@ -36,6 +36,7 @@ namespace NetworkingTelemetry
         private EventSource? _eventSource;
         private EventLevel _eventLevel;
         private TimeSpan? _metricsInterval;
+        private TimeSpan _targetMetricsInterval = Telemetry.DefaultMetricsInterval;
         private readonly object _lockObject = new();
 
         protected sealed override void OnEventWritten(EventWrittenEventArgs eventData)
@@ -102,9 +103,9 @@ namespace NetworkingTelemetry
                         return;
                     }
 
-                    if (_metricsConsumers is INetworkingMetricsConsumer<TMetrics>[] consumers)
+                    if (_metricsConsumers is IMetricsConsumer<TMetrics>[] consumers)
                     {
-                        foreach (INetworkingMetricsConsumer<TMetrics> consumer in consumers)
+                        foreach (IMetricsConsumer<TMetrics> consumer in consumers)
                         {
                             try
                             {
@@ -144,13 +145,18 @@ namespace NetworkingTelemetry
         {
             lock (_lockObject)
             {
+                if (metricsInterval.HasValue)
+                {
+                    _targetMetricsInterval = metricsInterval.Value;
+                }
+
                 if (_eventSource is null)
                 {
                     return;
                 }
 
                 EventLevel eventLevel = _telemetryConsumers is null ? EventLevel.Critical : EventLevel.Verbose;
-                metricsInterval = _metricsConsumers is null ? null : metricsInterval;
+                metricsInterval = _metricsConsumers is null ? null : _targetMetricsInterval;
 
                 if (_eventLevel == eventLevel && _metricsInterval == metricsInterval)
                 {
@@ -166,7 +172,7 @@ namespace NetworkingTelemetry
                     matchAnyKeyword: EventKeywords.None,
                     arguments: metricsInterval.HasValue ? new Dictionary<string, string?> { { "EventCounterIntervalSec", metricsInterval.Value.TotalSeconds.ToString() } } : null);
 
-                Logger?.LogDebug($"Enabled EventSource {EventSourceName} with EventLevel {eventLevel} and EventCounterInterval {metricsInterval}");
+                Logger?.LogDebug($"Enabled EventSource {EventSourceName} with EventLevel {eventLevel}{(metricsInterval.HasValue ? $" and EventCounterInterval {metricsInterval}" : "")}");
             }
         }
 
@@ -182,7 +188,7 @@ namespace NetworkingTelemetry
                 Logger?.LogDebug($"Added a telemetry consumer {telemetryConsumer} to EventSource {EventSourceName}");
             }
 
-            if (consumer is INetworkingMetricsConsumer<TMetrics> metricsConsumer)
+            if (consumer is IMetricsConsumer<TMetrics> metricsConsumer)
             {
                 added |= Add(_lockObject, ref _metricsConsumers, metricsConsumer);
                 Logger?.LogDebug($"Added a metrics consumer {metricsConsumer} to EventSource {EventSourceName}");
@@ -221,7 +227,7 @@ namespace NetworkingTelemetry
                 Logger?.LogDebug($"Removed a telemetry consumer {telemetryConsumer} from EventSource {EventSourceName}");
             }
 
-            if (consumer is INetworkingMetricsConsumer<TMetrics> metricsConsumer)
+            if (consumer is IMetricsConsumer<TMetrics> metricsConsumer)
             {
                 removed |= Remove(_lockObject, ref _metricsConsumers, metricsConsumer);
                 Logger?.LogDebug($"Removed a metrics consumer {metricsConsumer} from EventSource {EventSourceName}");

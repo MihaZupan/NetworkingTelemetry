@@ -8,11 +8,13 @@ using System.Collections.Immutable;
 
 namespace NetworkingTelemetry
 {
-    public static class NetworkingTelemetry
+    public static class Telemetry
     {
+        internal static readonly TimeSpan DefaultMetricsInterval = TimeSpan.FromSeconds(1);
+
         private static readonly object _lock = new();
         private static ILogger<EventSourceListener>? _logger;
-        private static TimeSpan _metricsInterval = TimeSpan.FromSeconds(1);
+        private static TimeSpan _metricsInterval = DefaultMetricsInterval;
 
         private static readonly List<object> _consumers = new();
 
