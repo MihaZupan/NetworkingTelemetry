@@ -208,6 +208,10 @@ namespace NetworkingTelemetry
                     if (consumers is null || Array.IndexOf(consumers, consumer) < 0)
                     {
                         var newConsumers = new T[(consumers?.Length ?? 0) + 1];
+                        if (consumers is not null)
+                        {
+                            Array.Copy(consumers, 0, newConsumers, 0, consumers.Length);
+                        }
                         newConsumers[^1] = consumer;
                         consumers = newConsumers;
                         return true;
